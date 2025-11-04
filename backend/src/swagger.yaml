@@ -1,0 +1,200 @@
+openapi: 3.0.0
+info:
+  title: Products Search API
+  description: API para indexación y búsqueda de productos con MongoDB y Redis
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+    description: Servidor de desarrollo
+
+tags:
+  - name: Index
+    description: Endpoints para carga de datos
+  - name: Search
+    description: Endpoints para búsqueda y sugerencias
+
+paths:
+  /index/load:
+    post:
+      summary: Carga productos desde un archivo CSV
+      tags: [Index]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                path:
+                  type: string
+                  description: Ruta al archivo CSV (opcional, usa CSV_PATH del .env si se omite)
+                  example: "./data/products.csv"
+      responses:
+        '200':
+          description: Carga completada exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+                  inserted:
+                    type: number
+                    example: 1500
+                  updated:
+                    type: number
+                    example: 50
+                  errors:
+                    type: number
+                    example: 0
+                  totalProcessed:
+                    type: number
+                    example: 1550
+                  durationMs:
+                    type: number
+                    example: 2345
+                  docsPerSecond:
+                    type: number
+                    example: 661
+        '500':
+          description: Error en la carga
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: "Error cargando productos"
+
+  /search:
+    get:
+      summary: Busca productos con precedencia y paginación
+      tags: [Search]
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema:
+            type: string
+          description: Término de búsqueda
+          example: "nike air"
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 0
+          description: Número de página (base 0)
+          example: 0
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+          description: Cantidad de resultados por página
+          example: 20
+      responses:
+        '200':
+          description: Resultados de búsqueda
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  q:
+                    type: string
+                    example: "nike air"
+                  page:
+                    type: number
+                    example: 0
+                  limit:
+                    type: number
+                    example: 20
+                  total:
+                    type: number
+                    example: 156
+                  hasNext:
+                    type: boolean
+                    example: true
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        _id:
+                          type: string
+                        title:
+                          type: string
+                          example: "Nike Air Max 90"
+                        category:
+                          type: string
+                          example: "Shoes"
+                        brand:
+                          type: string
+                          example: "Nike"
+                        product_type:
+                          type: string
+                          example: "Sneakers"
+                        sku:
+                          type: string
+                          example: "NIKE-AM90-001"
+                        score:
+                          type: number
+                          example: 12.5
+                  latency_ms:
+                    type: number
+                    example: 42
+        '400':
+          description: Parámetro de búsqueda faltante
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: "Query parameter \"q\" is required"
+        '500':
+          description: Error en la búsqueda
+
+  /suggest:
+    get:
+      summary: Obtiene sugerencias de productos por prefijo
+      tags: [Search]
+      parameters:
+        - in: query
+          name: q
+          required: true
+          schema:
+            type: string
+          description: Prefijo para sugerencias
+          example: "nike"
+      responses:
+        '200':
+          description: Sugerencias encontradas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  q:
+                    type: string
+                    example: "nike"
+                  suggestions:
+                    type: array
+                    items:
+                      type: string
+                    example: ["Nike Air Max 90", "Nike Air Force 1", "Nike Revolution 5"]
+                  latency_ms:
+                    type: number
+                    example: 15
+        '400':
+          description: Parámetro de búsqueda faltante
+        '500':
+          description: Error obteniendo sugerencias
